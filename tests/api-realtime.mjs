@@ -40,9 +40,10 @@ async function subscribe(user, couple) {
   const messages = [];
   const topic = `realtime:acceptance-${randomUUID()}`;
   let heartbeat;
+  const diagnostics=[];
   sockets.push(() => { clearInterval(heartbeat); socket.close(); });
   await new Promise((resolve,reject) => {
-    const timeout = setTimeout(() => reject(new Error('Realtime join timed out')),20000);
+    const timeout = setTimeout(() => reject(new Error('Realtime subscription timed out: '+JSON.stringify(diagnostics))),30000);
     socket.addEventListener('error',() => {clearTimeout(timeout); reject(new Error('Realtime connection failed'));});
     socket.addEventListener('open',() => {
       socket.send(JSON.stringify({topic,event:'phx_join',ref:'1',payload:{
@@ -57,8 +58,14 @@ async function subscribe(user, couple) {
     socket.addEventListener('message',event => {
       const data=JSON.parse(String(event.data));
       if(data.event==='phx_reply' && data.ref==='1') {
-        clearTimeout(timeout);
-        if(data.payload.status==='ok') resolve(); else reject(new Error('Realtime join denied'));
+        if(data.payload.status!=='ok') reject(new Error('Realtime join denied'));
+        // The join acknowledgement precedes the asynchronous CDC subscription.
+        // Wait for the server's system/ok event before writing any events.
+      }
+      if(data.event==='system') {
+        diagnostics.push(data.payload);
+        if(data.payload.status==='ok' && data.payload.extension==='postgres_changes') { clearTimeout(timeout); resolve(); }
+        if(data.payload.status==='error') { clearTimeout(timeout); reject(new Error('Realtime system error: '+JSON.stringify(data.payload))); }
       }
       if(data.event==='postgres_changes') messages.push(data.payload);
     });

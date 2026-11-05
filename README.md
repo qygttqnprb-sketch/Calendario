@@ -2,7 +2,7 @@
 
 App nativa per iOS 17+, SwiftUI e Supabase. Ogni persona sceglie i propri impegni; il partner ne conferma il completamento. Interfaccia italiana, settimana ISO e fuso Europe/Rome predefinito.
 
-**Stato:** backend Supabase attivo e migrazioni applicate; test PostgreSQL CI (10/10) e test di accettazione sul database reale superati. Il test reale usa fixture transazionali e lascia il database senza utenti o eventi di prova. Advisor di sicurezza senza segnalazioni. La build/test iOS viene verificata dalla CI macOS; il risultato aggiornato è nella pagina [Actions](https://github.com/qygttqnprb-sketch/Calendario/actions). Non è ancora una release App Store.
+**Stato:** backend Supabase attivo e migrazioni applicate; test PostgreSQL CI (10/10) e test di accettazione sul database reale superati. Il test reale usa fixture transazionali e lascia il database senza utenti o eventi di prova. Advisor di sicurezza senza segnalazioni. La build iOS e tutti e 5 i test sul simulatore sono passati nella CI macOS; il risultato aggiornato è nella pagina [Actions](https://github.com/qygttqnprb-sketch/Calendario/actions). Non è ancora una release App Store.
 
 Repository: https://github.com/qygttqnprb-sketch/Calendario. Backend: [dashboard Supabase Calendario](https://supabase.com/dashboard/project/hibizgelxgkixviferoo), regione Irlanda (`eu-west-1`). Lo scheduler è attivo ogni minuto e Realtime pubblica `couple_changes`.
 
@@ -31,7 +31,7 @@ Lo script copia `ios/Config.public.xcconfig` in `ios/Config.xcconfig` solo se il
 
 Per usare un altro progetto, modifica il file locale ignorato `Config.xcconfig`. Su un nuovo database Supabase applica tutte le migrazioni in ordine. I nomi delle migrazioni nel repository corrispondono alla storia registrata nel progetto remoto; non riapplicarle manualmente al progetto già configurato. Verifica i comandi disponibili con `supabase --help` e `supabase db push --help`.
 
-Auth usa email/password. Dopo la conferma email torna nell’app ed esegui il login; per l’apertura al pubblico restano da configurare SMTP e una destinazione definitiva della pagina di conferma. Le credenziali degli utenti non vengono incluse nel repository. Supabase Swift è fissato alla versione esatta `2.30.0`. La CI conserva il risultato dei test iOS e registra la risoluzione delle dipendenze.
+Auth usa email/password. Dopo la conferma email torna nell’app ed esegui il login; per l’apertura al pubblico restano da configurare SMTP e una destinazione definitiva della pagina di conferma. Le credenziali degli utenti non vengono incluse nel repository. Supabase Swift è fissato alla versione esatta `2.30.0`; `ios/Package.resolved` conserva anche le versioni delle dipendenze transitive risolte dalla build verificata. La CI conserva il risultato dei test iOS.
 
 Lo stack locale espone HTTP; per provarlo su dispositivo servono un endpoint HTTPS raggiungibile e la relativa configurazione. Non disattivare TLS sul progetto remoto.
 

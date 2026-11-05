@@ -44,3 +44,33 @@ jobs:
           name: ios-test-results
           path: ios/TestResults.xcresult
           if-no-files-found: ignore
+  api-realtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Configure disposable local Auth
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('supabase/config.toml')
+          p.write_text(p.read_text().replace('enable_confirmations = true','enable_confirmations = false'))
+          PY
+      - name: Start local Supabase and apply all migrations
+        run: |
+          supabase --help > /dev/null
+          supabase start --help > /dev/null
+          supabase start > /tmp/coppia-start.log 2>&1
+          supabase status --help > /dev/null
+          supabase status -o json > /tmp/coppia-local-status.json
+      - name: Verify Auth, Data API, privacy and Realtime with three users
+        run: node tests/api-realtime.mjs /tmp/coppia-local-status.json
+      - name: Stop disposable stack
+        if: always()
+        run: supabase stop

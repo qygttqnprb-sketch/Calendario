@@ -12,7 +12,8 @@ Repository: https://github.com/qygttqnprb-sketch/Calendario. Backend: [dashboard
 - `supabase/migrations`: schema, RLS, RPC transazionali, feed di invalidazione Realtime e scheduler pg_cron.
 - `scripts/test_database.py`: test su PostgreSQL reale, con tre identità, RLS e richieste concorrenti.
 - `ios/CoppiaTests`: date, cambio ora, confine anno ISO e URL.
-- `.github/workflows/ci.yml`: verifiche PostgreSQL e build/test iOS su macOS.
+- `.github/workflows/ci.yml`: PostgreSQL, build/test iOS su macOS e uno stack Supabase locale isolato.
+- `tests/api-realtime.mjs`: prova HTTP/WebSocket con tre utenti reali nello stack locale, senza servizi email esterni.
 
 ## Avvio su Mac
 
@@ -68,7 +69,7 @@ Per i test database usa **solo un database PostgreSQL vuoto e sacrificabile**, c
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres python3 scripts/test_database.py
 ```
 
-Il test usa `psql` e Python standard. Simula `auth.uid()` e i ruoli reali del Data API, senza sostituire o simulare il motore SQL. Copre isolamento del terzo account, dettagli privati e occupato, scritture dirette vietate, assegnazione autonoma, doppia generazione concorrente, conferma concorrente, contestazione/ripresentazione, arretrati, quota congelata, DST, anno ISO e link non HTTPS. Il job PostgreSQL CI verifica schema, ottimizzazioni RLS e test di accettazione. Sul progetto remoto sono state applicate tutte le migrazioni, verificati job pg_cron e pubblicazione Realtime, ed eseguito lo stesso smoke test con rollback. La consegna in tempo reale fra due client iOS e l’invio email Auth richiedono ancora una prova integrata.
+Il test usa `psql` e Python standard. Simula `auth.uid()` e i ruoli reali del Data API, senza sostituire o simulare il motore SQL. Copre isolamento del terzo account, dettagli privati e occupato, scritture dirette vietate, assegnazione autonoma, doppia generazione concorrente, conferma concorrente, contestazione/ripresentazione, arretrati, quota congelata, DST, anno ISO e link non HTTPS. Il job PostgreSQL CI verifica schema, ottimizzazioni RLS e test di accettazione. Sul progetto remoto sono state applicate tutte le migrazioni, verificati job pg_cron e pubblicazione Realtime, ed eseguito lo stesso smoke test con rollback. La CI `api-realtime` esercita Auth, API e WebSocket Realtime su uno stack Supabase locale con tre account. La consegna fra due dispositivi iOS reali e l’invio email Auth remoto richiedono ancora una prova integrata.
 
 Il test transazionale `supabase/tests/live_acceptance.sql` può essere rieseguito da un amministratore su staging: verifica privacy e transizioni e annulla tutte le fixture. Non sostituisce la prova di concorrenza su connessioni indipendenti, eseguita dai test Python.
 

@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+ios/Config.xcconfig
+ios/*.xcodeproj/
+ios/DerivedData/
+.build/
+node_modules/
+supabase/.temp/
+__pycache__/

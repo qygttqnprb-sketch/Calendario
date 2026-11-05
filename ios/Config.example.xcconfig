@@ -1,0 +1,5 @@
+// xcconfig treats // as a comment, so use this slash substitution.
+SLASH = /
+SUPABASE_URL = https:$(SLASH)$(SLASH)YOUR_PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_REPLACE_ME
+// Set your own Apple development team in Xcode for device signing.

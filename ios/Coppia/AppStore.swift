@@ -19,6 +19,7 @@ import UserNotifications
     @Published var inviteCode: String?
     let client: SupabaseClient?
     private var realtimeTask: Task<Void, Never>?
+    private var subscriptionTask: Task<Void, Never>?
     private var channel: RealtimeChannelV2?
     private var refreshing = false
 
@@ -49,7 +50,7 @@ import UserNotifications
         }
     }
     func run(_ operation: () async throws -> Void) async {
-        guard !busy else { return }; busy = true; defer { busy = false }
+        guard !busy else { return }; error = nil; busy = true; defer { busy = false }
         do { try await operation() } catch { self.error = error.localizedDescription }
     }
     func authenticate(email: String, password: String, signup: Bool) async {
@@ -107,14 +108,20 @@ import UserNotifications
     }
     func listen() async {
         guard let client, let couple, channel == nil else { return }
-        let ch = await client.channel("couple-\(couple.id)")
-        let changes = await ch.postgresChange(AnyAction.self, schema:"public", table:"couple_changes", filter:.eq("couple_id", value:couple.id.uuidString))
-        do { try await ch.subscribeWithError() } catch { self.error = "Aggiornamento live non disponibile: \(error.localizedDescription)"; return }
+        let ch = client.channel("couple-\(couple.id)")
+        let changes = ch.postgresChange(AnyAction.self, schema:"public", table:"couple_changes", filter:.eq("couple_id", value:couple.id.uuidString))
         channel = ch
         realtimeTask = Task { [weak self] in for await _ in changes { guard !Task.isCancelled else { break }; await self?.refresh() } }
-        await refresh() // Close the fetch/subscribe race.
+        // SDK 2.30 subscribes without throwing and retries while offline.
+        // Keep that retry outside Auth/onboarding so the app remains usable.
+        subscriptionTask = Task { [weak self] in
+            await ch.subscribe()
+            guard !Task.isCancelled else { return }
+            await self?.refresh() // Close the fetch/subscribe race.
+        }
     }
     func stopRealtime() async {
+        subscriptionTask?.cancel(); subscriptionTask = nil
         realtimeTask?.cancel(); realtimeTask = nil
         if let channel, let client { await client.removeChannel(channel) }; channel = nil
     }

@@ -1,0 +1,4 @@
+// Public client configuration. Authorization is enforced by RLS, never by hiding this key.
+SLASH = /
+SUPABASE_URL = https:$(SLASH)$(SLASH)hibizgelxgkixviferoo.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_sNYl05zKHSanoGLXO_2CAg_RLnPyFFu

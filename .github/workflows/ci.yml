@@ -11,20 +11,36 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/test_database.py
+      - run: psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/tests/live_acceptance.sql
   ios:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - run: brew install xcodegen
-      - run: cp Config.example.xcconfig Config.xcconfig && xcodegen generate
-        working-directory: ios
+      - run: bash scripts/setup_ios.sh
       - name: Build and test on an available iPhone simulator
         run: |
           DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for vs in d["devices"].values() for v in vs if "iPhone" in v["name"]))')
-          xcodebuild test -project ios/Coppia.xcodeproj -scheme Coppia -destination "platform=iOS Simulator,id=$DEVICE_ID" CODE_SIGNING_ALLOWED=NO
+          xcodebuild test -project ios/Coppia.xcodeproj -scheme Coppia -resultBundlePath ios/TestResults.xcresult -destination "platform=iOS Simulator,id=$DEVICE_ID" CODE_SIGNING_ALLOWED=NO
+      - name: Record resolved package versions
+        if: always()
+        run: |
+          LOCK=ios/Coppia.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          if [ -f "$LOCK" ]; then
+            echo COPPIA_PACKAGE_RESOLVED_BEGIN
+            cat "$LOCK"
+            echo COPPIA_PACKAGE_RESOLVED_END
+          fi
+      - name: Upload simulator test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ios/TestResults.xcresult
+          if-no-files-found: ignore

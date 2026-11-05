@@ -34,7 +34,8 @@ class DatabaseTests(unittest.TestCase):
         grant execute on function auth.uid() to authenticated;
         create publication supabase_realtime;
         """)
-        sql((ROOT/'supabase/migrations/20261104000100_initial.sql').read_text())
+        sql(next((ROOT/'supabase/migrations').glob('*_initial.sql')).read_text())
+        for migration in sorted((ROOT/'supabase/migrations').glob('*_indexes_and_rls_plans.sql')): sql(migration.read_text())
         sql(f"insert into auth.users values ('{A}'),('{B}'),('{C}');")
         cls.couple=sql("select public.create_couple('Noi','Alice');",A)
         token=sql(f"select public.create_invite('{cls.couple}');",A)

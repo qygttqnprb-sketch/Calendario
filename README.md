@@ -2,7 +2,9 @@
 
 App nativa per iOS 17+, SwiftUI e Supabase. Ogni persona sceglie i propri impegni; il partner ne conferma il completamento. Interfaccia italiana, settimana ISO e fuso Europe/Rome predefinito.
 
-**Stato della consegna:** codice e repository Git locali creati. Non è una release validata per distribuzione: in questo ambiente mancano Xcode, PostgreSQL e Supabase CLI; il proxy di rete non è raggiungibile. I test di integrazione e i test iOS sono inclusi ma non sono stati eseguiti qui. Nessun database remoto è stato creato o modificato. Repository GitHub: https://github.com/qygttqnprb-sketch/Calendario.
+**Stato:** backend Supabase attivo e migrazioni applicate; test PostgreSQL CI (10/10) e test di accettazione sul database reale superati. Il test reale usa fixture transazionali e lascia il database senza utenti o eventi di prova. Advisor di sicurezza senza segnalazioni. La build/test iOS viene verificata dalla CI macOS; il risultato aggiornato è nella pagina [Actions](https://github.com/qygttqnprb-sketch/Calendario/actions). Non è ancora una release App Store.
+
+Repository: https://github.com/qygttqnprb-sketch/Calendario. Backend: [dashboard Supabase Calendario](https://supabase.com/dashboard/project/hibizgelxgkixviferoo), regione Irlanda (`eu-west-1`). Lo scheduler è attivo ogni minuto e Realtime pubblica `couple_changes`.
 
 ## Contenuto
 
@@ -16,12 +18,19 @@ App nativa per iOS 17+, SwiftUI e Supabase. Ogni persona sceglie i propri impegn
 
 Richiede Xcode 16+, XcodeGen e Supabase CLI. Installare gli strumenti secondo la loro documentazione; per XcodeGen è disponibile `brew install xcodegen`.
 
-1. Crea un progetto Supabase dedicato, oppure avvia lo stack locale con `supabase start`. Non utilizzare un database con dati esistenti: le migrazioni sono per un progetto nuovo.
-2. Per il progetto remoto, verifica la CLI con `supabase --help`, poi `supabase link --help`, `supabase db push --help`. Collega il progetto e applica entrambe le migrazioni con `supabase db push`. La seconda richiede pg_cron, disponibile su Supabase.
-3. In Supabase Auth abilita email/password, configura SMTP per l’ambiente di produzione e il flusso di conferma email. Dopo la conferma l’utente torna nell’app ed esegue il login. Per Realtime assicurati che `couple_changes` appartenga alla pubblicazione `supabase_realtime` (la prima migrazione lo imposta).
-4. Copia `ios/Config.example.xcconfig` in `ios/Config.xcconfig`. Inserisci URL HTTPS e **chiave `sb_publishable_…`**. L’app accetta esclusivamente questo formato; nessuna chiave segreta è necessaria nel client.
-5. Da `ios`, esegui `xcodegen generate` e apri `Coppia.xcodeproj`. Scegli il tuo team Apple per installare su dispositivo; il simulatore non richiede firma.
-6. Risolvi i pacchetti in Xcode e conserva in Git il `Package.resolved` prodotto, prima di una release. Supabase Swift è vincolato alla versione esatta `2.30.0`; la risoluzione e compatibilità devono essere verificate con la build CI. La CLI non era disponibile per generare le migrazioni: i file SQL sono stati preparati manualmente e vanno validati con `supabase db reset` sullo stack locale.
+Il progetto remoto è già configurato. Su Mac:
+
+```sh
+brew install xcodegen
+bash scripts/setup_ios.sh
+open ios/Coppia.xcodeproj
+```
+
+Lo script copia `ios/Config.public.xcconfig` in `ios/Config.xcconfig` solo se il file locale non esiste, quindi genera il progetto. Il file pubblico contiene esclusivamente URL e chiave pubblicabile del backend; la sicurezza dei dati è affidata a RLS e alle RPC autenticate. Scegli il team Apple e lo scheme `Coppia` per l’installazione su iPhone; il simulatore non richiede firma.
+
+Per usare un altro progetto, modifica il file locale ignorato `Config.xcconfig`. Su un nuovo database Supabase applica tutte le migrazioni in ordine. I nomi delle migrazioni nel repository corrispondono alla storia registrata nel progetto remoto; non riapplicarle manualmente al progetto già configurato. Verifica i comandi disponibili con `supabase --help` e `supabase db push --help`.
+
+Auth usa email/password. Dopo la conferma email torna nell’app ed esegui il login; per l’apertura al pubblico restano da configurare SMTP e una destinazione definitiva della pagina di conferma. Le credenziali degli utenti non vengono incluse nel repository. Supabase Swift è fissato alla versione esatta `2.30.0`. La CI conserva il risultato dei test iOS e registra la risoluzione delle dipendenze.
 
 Lo stack locale espone HTTP; per provarlo su dispositivo servono un endpoint HTTPS raggiungibile e la relativa configurazione. Non disattivare TLS sul progetto remoto.
 
@@ -59,7 +68,9 @@ Per i test database usa **solo un database PostgreSQL vuoto e sacrificabile**, c
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres python3 scripts/test_database.py
 ```
 
-Il test usa `psql` e Python standard. Simula `auth.uid()` e i ruoli reali del Data API, senza sostituire o simulare il motore SQL. Copre isolamento del terzo account, dettagli privati e occupato, scritture dirette vietate, assegnazione autonoma, doppia generazione concorrente, conferma concorrente, contestazione/ripresentazione, arretrati, quota congelata, DST, anno ISO e link non HTTPS. Il job PostgreSQL CI verifica la prima migrazione; lo scheduler pg_cron va verificato sullo stack Supabase locale o di staging.
+Il test usa `psql` e Python standard. Simula `auth.uid()` e i ruoli reali del Data API, senza sostituire o simulare il motore SQL. Copre isolamento del terzo account, dettagli privati e occupato, scritture dirette vietate, assegnazione autonoma, doppia generazione concorrente, conferma concorrente, contestazione/ripresentazione, arretrati, quota congelata, DST, anno ISO e link non HTTPS. Il job PostgreSQL CI verifica schema, ottimizzazioni RLS e test di accettazione. Sul progetto remoto sono state applicate tutte le migrazioni, verificati job pg_cron e pubblicazione Realtime, ed eseguito lo stesso smoke test con rollback. La consegna in tempo reale fra due client iOS e l’invio email Auth richiedono ancora una prova integrata.
+
+Il test transazionale `supabase/tests/live_acceptance.sql` può essere rieseguito da un amministratore su staging: verifica privacy e transizioni e annulla tutte le fixture. Non sostituisce la prova di concorrenza su connessioni indipendenti, eseguita dai test Python.
 
 Da Xcode esegui lo scheme `Coppia` con Test, oppure usa la CI macOS. Prima di una release esegui anche `supabase db reset`, gli advisor di sicurezza disponibili nella versione CLI installata e la prova manuale seguente.
 
@@ -72,4 +83,4 @@ Da Xcode esegui lo scheme `Coppia` con Test, oppure usa la CI macOS. Prima di un
 
 ## Passaggi rimasti per la distribuzione
 
-Build e test su Xcode/Supabase, credenziali pubbliche del progetto, configurazione SMTP, firma Apple, icona e materiali App Store. Inviti e Auth devono avere rate limiting operativo prima dell’apertura al pubblico. Il consenso EventKit e le regole della settimana richiedono anche verifica su dispositivi reali. Nessuna funzione IA è inclusa.
+Prova integrata su due dispositivi, configurazione SMTP e redirect email, firma Apple, icona e materiali App Store. Inviti e Auth devono avere rate limiting operativo prima dell’apertura al pubblico. Il consenso EventKit e le regole della settimana richiedono anche verifica su dispositivi reali. Nessuna funzione IA è inclusa.
